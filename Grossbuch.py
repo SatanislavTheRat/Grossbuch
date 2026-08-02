@@ -1,5 +1,6 @@
 from datetime import date
 import json
+import os
 
 class CategoryInUseError(Exception):
     pass
@@ -36,18 +37,46 @@ class Grossbuch:
         self.history_file = history_file
         self.categories_file = categories_file
         self.history = []
-        self.categories = ["Food",
-                           "Medicine",
-                           "Transportation",
-                           "Alcohol",
-                           "Cigarettes",
-                           "Home stuff",
-                           "Clothes",
-                           "Other"]
+        self.categories = [
+            "Salary",
+            "Food",
+            "Restaurants",
+            "Transportation",
+            "Housing",
+            "Utilities",
+            "Medicine",
+            "Clothes",
+            "Education",
+            "Entertainment",
+            "Travel",
+            "Gifts",
+            "Pets",
+            "Taxes",
+            "Savings",
+            "Investments",
+            "Subscriptions",
+            "Home Stuff",
+            "Electronics",
+            "Personal Care",
+            "Alcohol",
+            "Cigarettes",
+            "Other"
+        ]
         self.balance = 0
+        self.ensure_file_exists()
         self.load_history()
         self.load_categories()
         self.update_categories()
+
+    def ensure_file_exists(self):
+        if not os.path.exists(self.history_file):
+            with open(self.history_file, "w") as history:
+                history.write("[]")
+        if not os.path.exists(self.categories_file):
+            with open(self.categories_file, "w") as categories:
+                for category in self.categories:
+                    categories.write(f"{category}\n")
+
 
     def load_categories(self):
         self.categories = []
