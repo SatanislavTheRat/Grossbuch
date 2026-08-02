@@ -49,13 +49,15 @@ def add_operation():
     amount_entry.delete(0, "end")
     description_entry.delete(0, "end")
     category_entry.delete(0, "end")
+    category_search_entry.configure(state="normal")
     category_search_entry.delete(0, "end")
     add_operation_button.configure(state="disabled")
     history_box.delete("1.0", "end")
     history_box.insert("1.0", grossbuch.text())
     history_box.see("end")
     balance_label.configure(text=f"Balance = {grossbuch.balance} UAH")
-    category_search_entry.configure(state="normal")
+    update_categories()
+
 
 def show_category(category):
     if grossbuch.is_used(category):
@@ -68,6 +70,7 @@ def show_category(category):
 
 
 def update_categories(event=None):
+    categories_frame_clear_up()
     text = category_search_entry.get().capitalize()
     if not text:
         add_category_button.configure(state="disabled")
@@ -96,9 +99,11 @@ def choose_category(category):
     else:
         delete_category_button.configure(state="normal")
 
-    merge_with_button.configure(state="normal")
+    if not amount_entry.get() and not description_entry.get():
+        merge_with_button.configure(state="normal")
 
     check_rename_button()
+
 
 def add_category():
     category=category_search_entry.get().capitalize()
@@ -131,7 +136,7 @@ def rename_category():
     old=category_search_entry.get()
     new=rename_category_entry.get()
     grossbuch.rename_category(old,new)
-    update_right_panel()
+    update_all()
 
 def delete_category():
     category = category_search_entry.get()
@@ -144,13 +149,10 @@ def delete_category():
     categories_frame.update_idletasks()
     categories_frame._parent_canvas.yview_moveto(0)
 
-def clear_all_entries():
-    amount_entry.delete(0, "end")
-    description_entry.delete(0, "end")
-    category_entry.delete(0, "end")
-    category_search_entry.delete(0, "end")
-    rename_category_entry.delete(0, "end")
-    reconcile_entry.delete(0, "end")
+def categories_frame_clear_up():
+    categories_frame.update_idletasks()
+    categories_frame._parent_canvas.yview_moveto(0.0)
+
 
 def merge_mode():
     merged_category = category_search_entry.get()
@@ -158,7 +160,7 @@ def merge_mode():
         widget.destroy()
     label = tk.CTkLabel(categories_frame, text=f"Merge '{merged_category}' into:", font = TEXT_FONT)
     label.grid()
-    cancel_button=tk.CTkButton(categories_frame, text="Cancel", **SMALLER_BUTTON_STYLE, command=update_right_panel)
+    cancel_button=tk.CTkButton(categories_frame, text="Cancel", **SMALLER_BUTTON_STYLE, command=update_all)
     cancel_button.grid()
     merge_with_button.configure(state="disabled")
     category_entry.configure(state="disabled")
@@ -173,21 +175,26 @@ def merge_mode():
     categories_frame.update_idletasks()
     categories_frame._parent_canvas.yview_moveto(0.0)
 
+def update_all():
+    update_entries()
+    update_categories()
+
 def merge_into(new):
     old = category_search_entry.get()
     grossbuch.merge_categories(old,new)
-    update_right_panel()
+    update_all()
 
-def update_right_panel():
+
+
+def update_entries():
+    rename_category_entry.delete(0, "end")
     category_search_entry.configure(state="normal")
     category_search_entry.delete(0, "end")
+    category_entry.configure(state="normal")
     category_entry.delete(0, "end")
-    update_categories()
-    history_box
     history_box.delete("1.0", "end")
     history_box.insert("1.0", grossbuch.text())
-    categories_frame.update_idletasks()
-    categories_frame._parent_canvas.yview_moveto(0.0)
+    categories_frame_clear_up()
 
 
 
