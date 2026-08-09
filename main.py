@@ -7,8 +7,9 @@ from styles import *
 
 HISTORY_FILE = "history.json"
 CATEGORIES_FILE = "categories.json"
+BACKUP_PATH = "backups"
 
-grossbuch=Grossbuch(HISTORY_FILE,CATEGORIES_FILE)
+grossbuch=Grossbuch(HISTORY_FILE,CATEGORIES_FILE,BACKUP_PATH)
 
 def lock_entry(entry):
     entry.configure(**ENTRY_DISABLED_STYLE)

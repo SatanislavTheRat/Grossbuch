@@ -1,18 +1,15 @@
-from datetime import date
+from datetime import date,datetime
 import json
 import os
-
+import shutil
 
 class CategoryInUseError(Exception):
     pass
-
-
 class CategoryDoesNotExistError(Exception):
     pass
 
 
 class Operation:
-
     def __init__(self, date, amount, description, category, balance=0):
         self.date = date
         self.amount = amount
@@ -44,10 +41,12 @@ class Operation:
 
 
 class Grossbuch:
+    def __init__(self, history_file, categories_file, backup_path):
 
-    def __init__(self, history_file, categories_file):
         self.history_file = history_file
         self.categories_file = categories_file
+        self.backup_path = backup_path
+
         self.history = []
 
         self.categories = [
@@ -79,9 +78,18 @@ class Grossbuch:
         self.balance = 0
 
         self.ensure_file_exists()
+        self.backup()
         self.load_history()
         self.load_categories()
         self.update_categories()
+
+    def backup(self):
+        if not os.path.exists(self.backup_path):
+            os.makedirs(self.backup_path)
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        shutil.copy(self.history_file, os.path.join(self.backup_path,f"history-{timestamp}.json"))
+        shutil.copy(self.categories_file, os.path.join(self.backup_path,f"categories-{timestamp}.json"))
+
 
     def ensure_file_exists(self):
         if not os.path.exists(self.history_file):
