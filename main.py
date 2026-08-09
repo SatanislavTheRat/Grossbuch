@@ -1,6 +1,7 @@
 import customtkinter as tk
 from datetime import date
 from PIL import Image
+
 from Grossbuch import Grossbuch
 from styles import *
 
@@ -8,6 +9,13 @@ HISTORY_FILE = "history.json"
 CATEGORIES_FILE = "categories.json"
 
 grossbuch=Grossbuch(HISTORY_FILE,CATEGORIES_FILE)
+
+def lock_entry(entry):
+    entry.configure(**ENTRY_DISABLED_STYLE)
+    entry.configure(state="disabled")
+def unlock_entry(entry):
+    entry.configure(state="normal")
+    entry.configure(**ENTRY_STYLE)
 
 def validate_amount():
     text = amount_entry.get()
@@ -49,14 +57,15 @@ def add_operation():
     amount_entry.delete(0, "end")
     description_entry.delete(0, "end")
     category_entry.delete(0, "end")
-    category_search_entry.configure(state="normal")
+    unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     add_operation_button.configure(state="disabled")
-    history_box.delete("1.0", "end")
-    history_box.insert("1.0", grossbuch.text())
-    history_box.see("end")
+    grossbuch_box.delete("1.0", "end")
+    grossbuch_box.insert("1.0", grossbuch.text())
+    grossbuch_box.see("end")
     balance_label.configure(text=f"Balance = {grossbuch.balance} UAH")
     update_categories()
+
 
 
 def show_category(category):
@@ -67,7 +76,6 @@ def show_category(category):
         button = tk.CTkButton(categories_frame, text=category, **UNUSED_LIST_BUTTON_STYLE,
                               command=lambda c=category: choose_category(c))
     button.grid()
-
 
 def update_categories(event=None):
     categories_frame_clear_up()
@@ -85,14 +93,14 @@ def update_categories(event=None):
             show_category(category)
 
 def choose_category(category):
-    category_search_entry.configure(state="normal")
+    unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     category_search_entry.insert(0, category)
     category_entry.delete(0, "end")
     category_entry.insert(0, category)
     add_category_button.configure(state="disabled")
     check_fields()
-    category_search_entry.configure(state="disabled")
+    lock_entry(category_search_entry)
 
     if grossbuch.is_used(category):
         delete_category_button.configure(state="disabled")
@@ -103,7 +111,6 @@ def choose_category(category):
         merge_with_button.configure(state="normal")
 
     check_rename_button()
-
 
 def add_category():
     category=category_search_entry.get().capitalize()
@@ -116,11 +123,11 @@ def add_category():
 def synchronize_category_search_entry(event):
     tabs.set("Categories")
     text = category_entry.get()
-    category_search_entry.configure(state="normal")
+    unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     if text.strip():
         category_search_entry.insert(0, text)
-        category_search_entry.configure(state="disabled")
+        lock_entry(category_search_entry)
     update_categories()
 
 def check_rename_button(event=None):
@@ -141,18 +148,16 @@ def rename_category():
 def delete_category():
     category = category_search_entry.get()
     grossbuch.delete_category(category)
-    category_search_entry.configure(state="normal")
+    unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     category_entry.delete(0, "end")
     delete_category_button.configure(state="disabled")
     update_categories()
-    categories_frame.update_idletasks()
-    categories_frame._parent_canvas.yview_moveto(0)
+    categories_frame_clear_up()
 
 def categories_frame_clear_up():
     categories_frame.update_idletasks()
     categories_frame._parent_canvas.yview_moveto(0.0)
-
 
 def merge_mode():
     merged_category = category_search_entry.get()
@@ -163,8 +168,8 @@ def merge_mode():
     cancel_button=tk.CTkButton(categories_frame, text="Cancel", **SMALLER_BUTTON_STYLE, command=update_all)
     cancel_button.grid()
     merge_with_button.configure(state="disabled")
-    category_entry.configure(state="disabled")
-    category_search_entry.configure(state="disabled")
+    lock_entry(category_entry)
+    lock_entry(category_search_entry)
     for category in grossbuch.categories:
         if category == merged_category:
             pass
@@ -184,16 +189,14 @@ def merge_into(new):
     grossbuch.merge_categories(old,new)
     update_all()
 
-
-
 def update_entries():
     rename_category_entry.delete(0, "end")
-    category_search_entry.configure(state="normal")
+    unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
-    category_entry.configure(state="normal")
+    unlock_entry(category_entry)
     category_entry.delete(0, "end")
-    history_box.delete("1.0", "end")
-    history_box.insert("1.0", grossbuch.text())
+    grossbuch_box.delete("1.0", "end")
+    grossbuch_box.insert("1.0", grossbuch.text())
     categories_frame_clear_up()
 
 
@@ -246,29 +249,31 @@ def reconcile():
 
 grossbuch_window = tk.CTk()
 
-grossbuch_window.geometry("700x750")
+grossbuch_window.geometry("850x770")
 grossbuch_window.title("Grossbuch")
 grossbuch_window.resizable(False, False)
 
-logo = tk.CTkImage(light_image=Image.open("logo.png"),size=(700, 196))
+logo = tk.CTkImage(light_image=Image.open("logo.png"),size=(850, 225))
 logo_label = tk.CTkLabel(grossbuch_window,text="",image=logo)
 logo_label.grid(row=0,column=0, columnspan = 2, sticky="EW",)
 
-date_label=tk.CTkLabel(grossbuch_window,text=date.today().strftime("%d.%m.%Y, %A"), font=TEXT_FONT)
-date_label.grid(row=1,columnspan = 2,padx=50,pady=(10,5),sticky="WE")
+
 
 main_frame = tk.CTkFrame(grossbuch_window,**PANEL_STYLE)
-main_frame.grid(row=2,column=0,columnspan=2,padx=15,pady=10,sticky="ew")
-
+main_frame.grid(row=1,column=0,columnspan=2,padx=8,pady=15,sticky="ew")
+main_frame.grid_columnconfigure(0, weight=1)
+main_frame.grid_columnconfigure(1, weight=1)
+main_frame.grid_rowconfigure(1, weight=1)
 #############################----LEFT PANEL-----###################################
 
-main_frame.grid_columnconfigure(0, weight=1)
-left_frame = tk.CTkFrame(main_frame, width=250, height=400,**PANEL_STYLE)
+
+left_frame = tk.CTkFrame(main_frame, width=400, height=490,**PANEL_STYLE)
 left_frame.grid(row=0,column=0,padx=(0, 10),sticky="EW")
 left_frame.grid_propagate(False)
 
+
 title_label = tk.CTkLabel(left_frame,text="New record", font=TITLE_FONT)
-title_label.grid(row=0,columnspan=2, pady=(25,10))
+title_label.grid(row=0,columnspan=2, pady=(15,10), padx = 150)
 
 
 operation_type = tk.StringVar(value="expense")
@@ -276,44 +281,65 @@ income_radio = tk.CTkRadioButton(left_frame,text="Income", variable=operation_ty
                                  **RADIO_STYLE)
 expense_radio = tk.CTkRadioButton(left_frame,text="Expense",variable=operation_type,value="expense",
                                   **RADIO_STYLE)
-income_radio.grid(row=1, column=0, padx=(40,15), pady=10)
-expense_radio.grid(row=1, column=1, padx=40, pady=10)
+income_radio.grid(row=1, column=0, padx=(30,15), pady=15)
+expense_radio.grid(row=1, column=1, padx=(20,15), pady=15)
 
 
-amount_error_label = tk.CTkLabel(left_frame,text = "", text_color="red", font=SMALL_FONT)
-amount_error_label.grid(row=2,columnspan=2, pady = (0,0))
+amount_error_label = tk.CTkLabel(left_frame,text = "", text_color=ERROR_COLOR, font=SMALL_FONT)
+amount_error_label.grid(row=2,column=1, pady = (0,0), padx = (0,0))
 
+date_word_label=tk.CTkLabel(left_frame,text="Date:",font=TEXT_FONT)
+date_word_label.grid(row=3,column=0, sticky = "EW")
 
 amount_label = tk.CTkLabel(left_frame,text = "Amount:",font=TEXT_FONT)
-amount_label.grid(row=3,column=0)
+amount_label.grid(row=3,column=1)
+
+
+date_label=tk.CTkLabel(left_frame,text=date.today().strftime("%d.%m.%Y, %A"), font=TEXT_FONT)
+date_label.grid(row=4,column = 0)
+
 amount_entry = tk.CTkEntry(left_frame, **ENTRY_STYLE)
-amount_entry.grid(row=3,column=1, pady=(0,15),sticky="w")
+amount_entry.grid(row=4,column=1)
 amount_entry.bind("<KeyRelease>", check_fields)
 
 
 description_label = tk.CTkLabel(left_frame,text="Description:",font=TEXT_FONT)
-description_label.grid(row=4,column=0)
-description_entry = tk.CTkEntry(left_frame,**ENTRY_STYLE)
-description_entry.grid(row=4,column=1, pady=15, sticky="w")
-description_entry.bind("<KeyRelease>", check_fields)
-
+description_label.grid(row=5,column=0,pady=(15,0))
 
 category_label = tk.CTkLabel(left_frame,text="Category:",font=TEXT_FONT)
-category_label.grid(row=5,column=0)
+category_label.grid(row=5,column=1,pady=(15,0))
+
+
+description_entry = tk.CTkEntry(left_frame,**ENTRY_STYLE)
+description_entry.grid(row=6,column=0)
+description_entry.bind("<KeyRelease>", check_fields)
+
 category_entry = tk.CTkEntry(left_frame,**ENTRY_STYLE)
-category_entry.grid(row=5,column=1, pady=15, sticky="w")
+category_entry.grid(row=6,column=1)
 category_entry.bind("<KeyRelease>", check_fields)
 category_entry.bind("<KeyRelease>", update_categories)
 category_entry.bind("<KeyRelease>", synchronize_category_search_entry)
 
+
 add_operation_button = tk.CTkButton(left_frame,text="Add to Grossbuch", **BUTTON_STYLE,
                                     state="disabled", command=add_operation)
-add_operation_button.grid(row=6,columnspan=2,pady = (30,15))
+add_operation_button.grid(row=7,columnspan=2,pady = (30,40))
+
+balance_label=tk.CTkLabel(left_frame,text=f"Balance = {grossbuch.balance} ₴",font=TITLE_FONT)
+balance_label.grid(row=8, columnspan = 2,pady = (15,15))
+
+reconcile_button=tk.CTkButton(left_frame, text="Reconcile", **BUTTON_STYLE, state="disabled", command=reconcile)
+reconcile_button.grid(row=9,column=0)
+reconcile_entry = tk.CTkEntry(left_frame, **ENTRY_STYLE)
+reconcile_entry.grid(row=9,column=1)
+reconcile_entry.bind("<KeyRelease>", reconcile_entry_check)
+reconcile_error_label=tk.CTkLabel(left_frame,text="",font=SMALL_FONT, text_color=ERROR_COLOR)
+reconcile_error_label.grid(row=10, columnspan=2)
 
 #############################----RIGHT PANEL-----###################################
 
-main_frame.grid_columnconfigure(1, weight=1)
-right_frame = tk.CTkFrame(main_frame, width=250, height=400, **PANEL_STYLE)
+
+right_frame = tk.CTkFrame(main_frame, width=400, height=490, **PANEL_STYLE)
 right_frame.grid(row=0,column=1,padx=(10, 0), sticky="EW")
 right_frame.grid_propagate(False)
 
@@ -324,19 +350,20 @@ right_frame.grid_columnconfigure(0, weight=1)
 
 tabs.add("Categories")
 tabs.add("Statistics")
+tabs.add("Grossbuch")
 
 ##########################################----CATEGORIES------####################################
 
 categories_tab = tabs.tab("Categories")
 
 category_search_entry = tk.CTkEntry(categories_tab,**ENTRY_STYLE,state="normal")
-category_search_entry.grid(row=0,column=0,padx=(10,5),pady=5)
+category_search_entry.grid(row=0,column=0,padx=(0,10),pady=5)
 category_search_entry.bind("<KeyRelease>", update_categories)
 
 
-add_category_button = tk.CTkButton(categories_tab,text="Add", **BUTTON_STYLE, state="disabled",
+add_category_button = tk.CTkButton(categories_tab,text="Add new", **BUTTON_STYLE, state="disabled",
                                    command=add_category)
-add_category_button.grid(row=0,column=1,padx=(5,10), pady=5, sticky="nsew")
+add_category_button.grid(row=0,column=1,padx=(15,30), pady=5, sticky="nsew")
 
 categories_tab.grid_columnconfigure(0, weight=1)
 categories_tab.grid_columnconfigure(1, weight=0)
@@ -345,15 +372,15 @@ categories_frame=tk.CTkScrollableFrame(categories_tab, **SCROLLABLE_FRAME_STYLE)
 categories_frame.grid(row=1,column=0,columnspan=2,sticky="NSEW")
 update_categories()
 
-##################################     DELETE MERGE RENAME     ################################################
+##                                DELETE MERGE RENAME                                        ##
 
-rename_category_button=tk.CTkButton(categories_tab, text = "Rename:", **BUTTON_STYLE, state="disabled",
+rename_category_button=tk.CTkButton(categories_tab, text = "Rename to...", **BUTTON_STYLE, state="disabled",
                                     command=rename_category)
-rename_category_button.grid(row=2,column=0, pady=(5,5))
+rename_category_button.grid(row=2,column=0, pady=(0,0))
 
 
-rename_category_entry = tk.CTkEntry(categories_tab, **ENTRY_STYLE)
-rename_category_entry.grid(row=2,column=1, pady=(5,5))
+rename_category_entry = tk.CTkEntry(categories_tab, **ENTRY_STYLE, placeholder_text = "Add new name first")
+rename_category_entry.grid(row=2,column=1, pady=5)
 rename_category_entry.bind("<KeyRelease>", check_rename_button)
 
 delete_category_button=tk.CTkButton(categories_tab,text="Delete", **BUTTON_STYLE, state="disabled",
@@ -368,23 +395,120 @@ merge_with_button.grid(row=3,column=1, pady=(5,0))
 ##########################################-----------STATISTICS-----------------#####################
 
 statistics_tab = tabs.tab("Statistics")
+
+statistics_tab.grid_rowconfigure(1, weight=1)
 statistics_tab.grid_columnconfigure(0, weight=1)
-statistics_tab.grid_rowconfigure(0, weight=1)
-history_box = tk.CTkTextbox(statistics_tab, font=TEXT_FONT, **PANEL_STYLE)
-history_box.grid(row=0,column=0, sticky="nsew")
-history_box.insert("end", grossbuch.text())
+
+# ==========================
+# Upper panel
+# ==========================
+
+top_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
+top_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+
+top_frame.grid_columnconfigure((0,1,2), weight=1)
+
+category_box = tk.CTkComboBox(
+    top_frame,
+    values=sorted(grossbuch.categories),
+    **COMBOBOX_STYLE
+)
+category_box.grid(row=0, column=0, columnspan=3, pady=(0,5))
+category_box.set("Choose category")
+
+summary_button = tk.CTkButton(
+    top_frame,
+    text="Summary",
+    **SMALLER_BUTTON_STYLE
+)
+summary_button.grid(row=1, column=0, padx=3)
+
+top_expenses_button = tk.CTkButton(
+    top_frame,
+    text="Top Expenses",
+    **SMALLER_BUTTON_STYLE
+)
+top_expenses_button.grid(row=1, column=1, padx=3)
+
+top_income_button = tk.CTkButton(
+    top_frame,
+    text="Top Income",
+    **SMALLER_BUTTON_STYLE
+)
+top_income_button.grid(row=1, column=2, padx=3)
+
+# ==========================
+# Central panel
+# ==========================
+
+center_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
+center_frame.grid(row=1, column=0, sticky="nsew", padx=5)
+
+center_frame.grid_rowconfigure(0, weight=1)
+center_frame.grid_columnconfigure(0, weight=1)
+
+statistics_box = tk.CTkTextbox(
+    center_frame,
+    font=TEXT_FONT,
+    **PANEL_STYLE
+)
+
+statistics_box.grid(row=0, column=0, sticky="nsew")
+statistics_box.insert("end", grossbuch.text())
+
+# ==========================
+# Lower panel
+# ==========================
+
+bottom_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
+bottom_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
+
+bottom_frame.grid_columnconfigure((0,1), weight=1)
+
+from_date_box = tk.CTkComboBox(
+    bottom_frame,
+    values=["From the beginning", "Week ago", "Month ago"],
+    **COMBOBOX_STYLE
+)
+from_date_box.grid(row=0, column=0, padx=3, pady=(0,5), sticky="ew")
+from_date_box.set("From date")
+
+to_date_box = tk.CTkComboBox(
+    bottom_frame,
+    values=["Until today", "Week ago", "Month ago"],
+    **COMBOBOX_STYLE
+)
+to_date_box.grid(row=0, column=1, padx=3, pady=(0,5), sticky="ew")
+to_date_box.set("Until date")
+
+apply_button = tk.CTkButton(
+    bottom_frame,
+    text="Apply",
+    **BUTTON_STYLE
+)
+apply_button.grid(row=1, column=0, padx=3, sticky="ew")
+
+reset_button = tk.CTkButton(
+    bottom_frame,
+    text="Reset",
+    **BUTTON_STYLE
+)
+reset_button.grid(row=1, column=1, padx=3, sticky="ew")
+
+############################------------GROSSBUCH------------##########################################
+grossbuch_tab = tabs.tab("Grossbuch")
+grossbuch_tab.grid_rowconfigure(0, weight=1)
+grossbuch_tab.grid_columnconfigure(0, weight=1)
+
+grossbuch_box = tk.CTkTextbox(
+    grossbuch_tab,
+    font=TEXT_FONT,
+    **PANEL_STYLE
+)
+
+grossbuch_box.grid(row=0, column=0, sticky="nsew")
+grossbuch_box.insert("end", grossbuch.text())
 
 #################################################################################
-
-balance_label=tk.CTkLabel(grossbuch_window,text=f"Balance = {grossbuch.balance} UAH",font=TITLE_FONT)
-balance_label.grid(row=3, sticky="N", columnspan = 2)
-
-reconcile_button=tk.CTkButton(grossbuch_window, text="Reconcile", **BUTTON_STYLE, state="disabled", command=reconcile)
-reconcile_button.grid(row=4,column=0, padx=(160,5), pady=(5,0), sticky = "e")
-reconcile_entry = tk.CTkEntry(grossbuch_window, **ENTRY_STYLE)
-reconcile_entry.grid(row=4,column=1, padx=(5,160), pady=(5,0), sticky="w")
-reconcile_entry.bind("<KeyRelease>", reconcile_entry_check)
-reconcile_error_label=tk.CTkLabel(grossbuch_window,text="",font=SMALL_FONT, text_color="red")
-reconcile_error_label.grid(row=5, column=1, padx=(5,100), sticky="W")
 
 grossbuch_window.mainloop()
