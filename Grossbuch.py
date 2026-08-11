@@ -29,8 +29,8 @@ class Operation:
     def text(self):
         return (
             f"{self.date.strftime('%d.%m.%Y, %A')}\n"
-            f"{self.description}, {self.amount:+} ₴, "
-            f"category: {self.category}"
+            f"{self.description}, {self.amount:+} ₴\n "
+            f"category: {self.category}\n"
         )
 
     def get_amount(self):
@@ -86,9 +86,9 @@ class Grossbuch:
     def backup(self):
         if not os.path.exists(self.backup_path):
             os.makedirs(self.backup_path)
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        shutil.copy(self.history_file, os.path.join(self.backup_path,f"history-{timestamp}.json"))
-        shutil.copy(self.categories_file, os.path.join(self.backup_path,f"categories-{timestamp}.json"))
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        shutil.copy(self.history_file, os.path.join(self.backup_path,f"{timestamp}history.json"))
+        shutil.copy(self.categories_file, os.path.join(self.backup_path,f"{timestamp}categories.json"))
 
 
     def ensure_file_exists(self):
@@ -315,6 +315,7 @@ class Grossbuch:
 
     def sort_by_amount(self, operations, reverse=False):
         return sorted(operations, key=Operation.get_amount, reverse=reverse)
+
 
 
 def from_dict(data):

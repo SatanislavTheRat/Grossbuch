@@ -1,6 +1,7 @@
 import customtkinter as tk
 from datetime import date
 from PIL import Image
+from tkcalendar import DateEntry
 
 from Grossbuch import Grossbuch
 from styles import *
@@ -203,6 +204,61 @@ def update_entries():
 
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^CATEGORIES^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+############################-----------STATISTICS--------------------#############################
+
+def get_summary():
+    operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)
+    if category_box.get() != "All categories":
+        return grossbuch.calculate_summary (grossbuch.filter_by_category(category_box.get(),operations_list))
+    return grossbuch.calculate_summary(operations_list)
+
+def show_summary():
+    statistics_box.delete("1.0", "end")
+    summary=f"Summary for {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n\n"
+    for key,item in get_summary().items():
+        summary += f"{key.capitalize()}: {item}\n\n"
+    statistics_box.insert("1.0", summary)
+
+def get_top_income():
+    if category_box.get() == "All categories":
+        operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)
+    else:
+        operations_list = grossbuch.filter_by_category(category_box.get(),
+        (grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date(), grossbuch.history)))
+
+    operations_list = [operation for operation in operations_list if operation.amount > 0]
+    return grossbuch.sort_by_amount(operations_list,reverse=True)
+
+def get_top_expense():
+    if category_box.get() == "All categories":
+        operations_list = grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date(), grossbuch.history)
+    else:
+        operations_list = grossbuch.filter_by_category(category_box.get(),
+        (grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)))
+
+    operations_list = [operation for operation in operations_list if operation.amount < 0]
+    return grossbuch.sort_by_amount(operations_list)
+
+def show_top_income():
+    statistics_box.delete("1.0", "end")
+    show = f"Top income from {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n"
+    for operation in get_top_income():
+        show += operation.text()+"\n"
+    statistics_box.insert("1.0", show)
+    statistics_box.see("1.0")
+
+def show_top_expense():
+    statistics_box.delete("1.0", "end")
+    show = f"Top expenses on {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n"
+    for operation in get_top_expense():
+        show += operation.text()+"\n"
+    statistics_box.insert("1.0", show)
+    statistics_box.see("1.0")
+
+
+
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^STATISTICS^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 def reconcile_entry_check(event=None):
     text = reconcile_entry.get()
@@ -394,7 +450,6 @@ merge_with_button=tk.CTkButton(categories_tab,text="Merge into...", **BUTTON_STY
 merge_with_button.grid(row=3,column=1, pady=(5,0))
 
 ##########################################-----------STATISTICS-----------------#####################
-
 statistics_tab = tabs.tab("Statistics")
 
 statistics_tab.grid_rowconfigure(1, weight=1)
@@ -407,43 +462,116 @@ statistics_tab.grid_columnconfigure(0, weight=1)
 top_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
 top_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
-top_frame.grid_columnconfigure((0,1,2), weight=1)
+top_frame.grid_columnconfigure(0, weight=0)
+top_frame.grid_columnconfigure(1, weight=1)
+top_frame.grid_columnconfigure(2, weight=1)
+
+# Category
+category_label = tk.CTkLabel(
+    top_frame,
+    text="Category:",
+    font=TEXT_FONT
+)
+category_label.grid(
+    row=0,
+    column=0,
+    padx=(3, 5),
+    pady=(0, 5),
+    sticky="w"
+)
+
+categories = ["All categories"] + sorted(grossbuch.categories)
 
 category_box = tk.CTkComboBox(
     top_frame,
-    values=sorted(grossbuch.categories),
+    values=categories,
     **COMBOBOX_STYLE
 )
-category_box.grid(row=0, column=0, columnspan=3, pady=(0,5))
-category_box.set("Choose category")
-
-summary_button = tk.CTkButton(
-    top_frame,
-    text="Summary",
-    **SMALLER_BUTTON_STYLE
+category_box.grid(
+    row=0,
+    column=1,
+    columnspan=2,
+    padx=(0, 3),
+    pady=(0, 5),
+    sticky="ew"
 )
-summary_button.grid(row=1, column=0, padx=3)
+category_box.set("All categories")
 
-top_expenses_button = tk.CTkButton(
-    top_frame,
-    text="Top Expenses",
-    **SMALLER_BUTTON_STYLE
-)
-top_expenses_button.grid(row=1, column=1, padx=3)
 
-top_income_button = tk.CTkButton(
+# Dates
+from_date_label = tk.CTkLabel(
     top_frame,
-    text="Top Income",
-    **SMALLER_BUTTON_STYLE
+    text="From:",
+    font=TEXT_FONT
 )
-top_income_button.grid(row=1, column=2, padx=3)
+from_date_label.grid(
+    row=1,
+    column=0,
+    padx=3,
+    pady=(0, 5),
+    sticky="e"
+)
+
+from_date_box = DateEntry(
+    top_frame,
+    mindate=grossbuch.first_date(),
+    maxdate=date.today(),
+    date_pattern="d.m.yyyy",
+    font=("Georgia", 14)
+)
+from_date_box.set_date(grossbuch.first_date())
+from_date_box.grid(
+    row=1,
+    column=1,
+    padx=3,
+    pady=(0, 5),
+    sticky="ew"
+)
+
+to_date_label = tk.CTkLabel(
+    top_frame,
+    text="To:",
+    font=TEXT_FONT
+)
+to_date_label.grid(
+    row=1,
+    column=2,
+    padx=3,
+    pady=(0, 5),
+    sticky="w"
+)
+
+to_date_box = DateEntry(
+    top_frame,
+    mindate=grossbuch.first_date(),
+    maxdate=date.today(),
+    date_pattern="d.m.yyyy",
+    font=("Georgia", 14)
+)
+to_date_box.set_date(date.today())
+to_date_box.grid(
+    row=1,
+    column=2,
+    padx=(35, 3),
+    pady=(0, 5),
+    sticky="e"
+)
+
 
 # ==========================
 # Central panel
 # ==========================
 
-center_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
-center_frame.grid(row=1, column=0, sticky="nsew", padx=5)
+center_frame = tk.CTkFrame(
+    statistics_tab,
+    fg_color="transparent"
+)
+center_frame.grid(
+    row=1,
+    column=0,
+    sticky="nsew",
+    padx=5
+)
 
 center_frame.grid_rowconfigure(0, weight=1)
 center_frame.grid_columnconfigure(0, weight=1)
@@ -453,48 +581,72 @@ statistics_box = tk.CTkTextbox(
     font=TEXT_FONT,
     **PANEL_STYLE
 )
+statistics_box.grid(
+    row=0,
+    column=0,
+    sticky="nsew"
+)
 
-statistics_box.grid(row=0, column=0, sticky="nsew")
-statistics_box.insert("end", grossbuch.text())
 
 # ==========================
 # Lower panel
 # ==========================
 
-bottom_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
-bottom_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
-
-bottom_frame.grid_columnconfigure((0,1), weight=1)
-
-from_date_box = tk.CTkComboBox(
-    bottom_frame,
-    values=["From the beginning", "Week ago", "Month ago"],
-    **COMBOBOX_STYLE
+bottom_frame = tk.CTkFrame(
+    statistics_tab,
+    fg_color="transparent"
 )
-from_date_box.grid(row=0, column=0, padx=3, pady=(0,5), sticky="ew")
-from_date_box.set("From date")
-
-to_date_box = tk.CTkComboBox(
-    bottom_frame,
-    values=["Until today", "Week ago", "Month ago"],
-    **COMBOBOX_STYLE
+bottom_frame.grid(
+    row=2,
+    column=0,
+    sticky="ew",
+    padx=5,
+    pady=5
 )
-to_date_box.grid(row=0, column=1, padx=3, pady=(0,5), sticky="ew")
-to_date_box.set("Until date")
 
-apply_button = tk.CTkButton(
-    bottom_frame,
-    text="Apply",
-    **BUTTON_STYLE
+bottom_frame.grid_columnconfigure(
+    (0, 1, 2),
+    weight=1
 )
-apply_button.grid(row=1, column=0, padx=3, sticky="ew")
 
-reset_button = tk.CTkButton(
+summary_button = tk.CTkButton(
     bottom_frame,
-    text="Reset",
-    **BUTTON_STYLE
+    text="Summary",
+    **SMALLER_BUTTON_STYLE,
+    command=show_summary
 )
-reset_button.grid(row=1, column=1, padx=3, sticky="ew")
+summary_button.grid(
+    row=0,
+    column=0,
+    padx=3,
+    sticky="ew"
+)
+
+top_expenses_button = tk.CTkButton(
+    bottom_frame,
+    text="Top Expenses",
+    **SMALLER_BUTTON_STYLE,
+    command=show_top_expense
+)
+top_expenses_button.grid(
+    row=0,
+    column=1,
+    padx=3,
+    sticky="ew"
+)
+
+top_income_button = tk.CTkButton(
+    bottom_frame,
+    text="Top Income",
+    **SMALLER_BUTTON_STYLE,
+    command=show_top_income
+)
+top_income_button.grid(
+    row=0,
+    column=2,
+    padx=3,
+    sticky="ew"
+)
 
 ############################------------GROSSBUCH------------##########################################
 grossbuch_tab = tabs.tab("Grossbuch")

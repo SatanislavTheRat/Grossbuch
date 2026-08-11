@@ -4,13 +4,19 @@ TITLE_FONT = (font, 18, "bold")
 
 TEXT_FONT = (font, 14)
 
-SMALL_FONT = (font, 12)
+SMALL_FONT = (font, 11)
+
+ERROR_COLOR="#C35A5A"
 
 ENTRY_STYLE = {
     "width": 135,
     "height": 32,
     "font": TEXT_FONT,
-    "corner_radius": 8
+    "corner_radius": 8,
+    "fg_color": "#2B2B2B",
+    "border_width": 1,
+    "border_color": "#5C6670",
+    "text_color": "#F5F1E8",
 }
 
 SEARCH_ENTRY_STYLE = {
@@ -30,10 +36,10 @@ BUTTON_STYLE = {
 SMALLER_BUTTON_STYLE = {
     "fg_color": "#7A2F1D",
     "hover_color": "#A13B22",
-    "font": (font, 12, "bold"),
+    "font": (font, 11),
     "corner_radius": 8,
     "height": 28,
-    "width": 60
+    "width": 100
 }
 
 PANEL_STYLE = {
@@ -82,8 +88,28 @@ UNUSED_LIST_BUTTON_STYLE = {
     "height": 28
 }
 
-SEARCH_ENTRY_DISABLED_STYLE = {
-    "fg_color": "#353535",
+COMBOBOX_STYLE = {
+    "width": 150,
+    "height": 32,
+    "font": TEXT_FONT,
+    "corner_radius": 8,
+
     "border_color": "#4A3A28",
-    "text_color": "#D8D1C6"
+
+    "button_color": "#7A2F1D",
+    "button_hover_color": "#A13B22",
+
+    "dropdown_fg_color": "#2B2B2B",
+    "dropdown_hover_color": "#50302A",
+
+    "dropdown_text_color": "#F5F1E8",
+
+    "text_color": "#F5F1E8"
+}
+
+ENTRY_DISABLED_STYLE = {
+    "fg_color": "#2E2E2E",
+    "border_width": 0,
+    "text_color": "#E4DED2",
+    "font": TEXT_FONT
 }
