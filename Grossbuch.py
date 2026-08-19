@@ -28,7 +28,7 @@ class Operation:
 
     def text(self):
         return (
-            f"{self.date.strftime('%d.%m.%Y, %A')}\n"
+            f"\n{self.date.strftime('%d.%m.%Y, %A')}\n"
             f"{self.description}, {self.amount:+} ₴\n "
             f"category: {self.category}\n"
         )
@@ -100,6 +100,32 @@ class Grossbuch:
             with open(self.categories_file, "w") as categories:
                 for category in self.categories:
                     categories.write(f"{category}\n")
+
+    def text_list(self):
+        actual_date = 0
+        result = []
+        todays = ""
+
+        for operation in self.history:
+            if operation.date != actual_date:
+                if todays != "":
+                    result.append([todays])
+                todays = ""
+
+                todays += f"{operation.date.strftime('%d.%m.%Y, %A').upper()}\n\n"
+                todays += f"{operation.description}, {operation.amount:+} ₴\n"
+                todays += f"category: {operation.category}\n"
+
+                actual_date = operation.date
+
+            else:
+                todays += f"\n{operation.description}, {operation.amount:+} ₴\n"
+                todays += f"category: {operation.category}\n"
+
+        if todays != "":
+            result.append([todays])
+
+        return result
 
     def load_categories(self):
         self.categories = []
