@@ -2,6 +2,8 @@ import customtkinter as tk
 from datetime import date
 from PIL import Image
 from tkcalendar import DateEntry
+from tkinter import ttk
+import tksheet
 
 from Grossbuch import Grossbuch
 from styles import *
@@ -9,6 +11,7 @@ from styles import *
 HISTORY_FILE = "history.json"
 CATEGORIES_FILE = "categories.json"
 BACKUP_PATH = "backups"
+
 
 grossbuch=Grossbuch(HISTORY_FILE,CATEGORIES_FILE,BACKUP_PATH)
 
@@ -44,15 +47,15 @@ def check_fields(event=None):
         add_operation_button.configure(state="disabled")
 
 def add_operation():
-    tabs.set("Statistics")
+    tabs.set("Grossbuch")
     operation_date = date.today()
 
     amount = int(amount_entry.get())
     if operation_type.get() == "expense":
         amount = -amount
 
-    description = description_entry.get()
-    category = category_entry.get()
+    description = description_entry.get().strip().capitalize()
+    category = category_entry.get().strip().capitalize()
 
     grossbuch.add_operation(operation_date, amount, description, category)
 
@@ -62,9 +65,7 @@ def add_operation():
     unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     add_operation_button.configure(state="disabled")
-    grossbuch_box.delete("1.0", "end")
-    grossbuch_box.insert("1.0", grossbuch.text())
-    grossbuch_box.see("end")
+    show_grossbuch()
     balance_label.configure(text=f"Balance = {grossbuch.balance} UAH")
     update_categories()
 
@@ -90,9 +91,11 @@ def update_categories(event=None):
         add_category_button.configure(state="normal")
     for widget in categories_frame.winfo_children():
         widget.destroy()
-    for category in grossbuch.categories:
+    for category in sorted(grossbuch.categories):
         if category.startswith(text):
             show_category(category)
+    category_box.configure(values=sorted(grossbuch.categories))
+    category_box.set("All categories")
 
 def choose_category(category):
     unlock_entry(category_search_entry)
@@ -119,12 +122,12 @@ def add_category():
     grossbuch.add_category(category)
     category_search_entry.delete(0, "end")
     update_categories()
-    grossbuch_window.update_idletasks()
-    categories_frame._parent_canvas.yview_moveto(1.0)
+    categories_frame_clear_up()
+    check_fields()
 
 def synchronize_category_search_entry(event):
     tabs.set("Categories")
-    text = category_entry.get()
+    text = category_entry.get().capitalize()
     unlock_entry(category_search_entry)
     category_search_entry.delete(0, "end")
     if text.strip():
@@ -136,6 +139,7 @@ def check_rename_button(event=None):
     if (
         category_search_entry.get().strip()
         and rename_category_entry.get().strip()
+        and rename_category_entry.get().strip().capitalize() not in grossbuch.categories
     ):
         rename_category_button.configure(state="normal")
     else:
@@ -143,7 +147,7 @@ def check_rename_button(event=None):
 
 def rename_category():
     old=category_search_entry.get()
-    new=rename_category_entry.get()
+    new=rename_category_entry.get().strip().capitalize()
     grossbuch.rename_category(old,new)
     update_all()
 
@@ -156,6 +160,7 @@ def delete_category():
     delete_category_button.configure(state="disabled")
     update_categories()
     categories_frame_clear_up()
+
 
 def categories_frame_clear_up():
     categories_frame.update_idletasks()
@@ -186,6 +191,7 @@ def update_all():
     update_entries()
     update_categories()
 
+
 def merge_into(new):
     old = category_search_entry.get()
     grossbuch.merge_categories(old,new)
@@ -197,8 +203,6 @@ def update_entries():
     category_search_entry.delete(0, "end")
     unlock_entry(category_entry)
     category_entry.delete(0, "end")
-    grossbuch_box.delete("1.0", "end")
-    grossbuch_box.insert("1.0", grossbuch.text())
     categories_frame_clear_up()
 
 
@@ -212,13 +216,6 @@ def get_summary():
         return grossbuch.calculate_summary (grossbuch.filter_by_category(category_box.get(),operations_list))
     return grossbuch.calculate_summary(operations_list)
 
-def show_summary():
-    statistics_box.delete("1.0", "end")
-    summary=f"Summary for {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n\n"
-    for key,item in get_summary().items():
-        summary += f"{key.capitalize()}: {item}\n\n"
-    statistics_box.insert("1.0", summary)
-
 def get_top_income():
     if category_box.get() == "All categories":
         operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)
@@ -229,7 +226,7 @@ def get_top_income():
     operations_list = [operation for operation in operations_list if operation.amount > 0]
     return grossbuch.sort_by_amount(operations_list,reverse=True)
 
-def get_top_expense():
+def get_top_expenses():
     if category_box.get() == "All categories":
         operations_list = grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date(), grossbuch.history)
     else:
@@ -239,24 +236,112 @@ def get_top_expense():
     operations_list = [operation for operation in operations_list if operation.amount < 0]
     return grossbuch.sort_by_amount(operations_list)
 
+def get_top_income_by_category():
+    result=[]
+    for key,value in grossbuch.top_income_by_category(from_date_box.get_date(),to_date_box.get_date()):
+        result.append([key,value[0],value[1]])
+    return result
+
+def get_top_expenses_by_category():
+    result=[]
+    for key,value in grossbuch.top_expenses_by_category(from_date_box.get_date(),to_date_box.get_date()):
+        result.append([key,value[0],value[1]])
+    return result
+
+def show_summary():
+    statistics_headers_sheet.set_sheet_data([[f"Summary for {category_box.get().lower()}\n"
+                                              f"from {from_date_box.get()} to {to_date_box.get()}"]])
+    statistics_headers_sheet.set_column_widths([370])
+    statistics_headers_sheet.refresh()
+    statistics_headers_sheet.row_height(row="all",height="text")
+    statistics_headers_sheet.height_and_width(height=statistics_headers_sheet.get_row_heights(0)[0] + 1)
+
+    statistics_sheet.set_sheet_data([
+            ["Income:", f"{get_summary()["income"]:,} ₴".replace(",", " ")],
+            ["Expenses:", f"{get_summary()["expenses"]:,} ₴".replace(",", " ")],
+            ["Balance:", f"{get_summary()["balance"]:,} ₴".replace(",", " ")],
+            ["Records:", f"{get_summary()["records"]}"]
+        ],reset_col_positions=False)
+    statistics_sheet.set_column_widths([150,100])
+    statistics_sheet.refresh()
+
 def show_top_income():
-    statistics_box.delete("1.0", "end")
-    show = f"Top income from {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n"
-    for operation in get_top_income():
-        show += operation.text()+"\n"
-    statistics_box.insert("1.0", show)
-    statistics_box.see("1.0")
+    if statistics_type.get() == "operation":
+        statistics_headers_sheet.set_sheet_data([["Date","Operation","Category","Amount"]],reset_col_positions=False)
+        statistics_headers_sheet.set_column_widths([82,108,108,70])
+        statistics_headers_sheet.refresh()
 
-def show_top_expense():
-    statistics_box.delete("1.0", "end")
-    show = f"Top expenses on {category_box.get().lower()}\nfrom {from_date_box.get()} to {to_date_box.get()}:\n\n"
-    for operation in get_top_expense():
-        show += operation.text()+"\n"
-    statistics_box.insert("1.0", show)
-    statistics_box.see("1.0")
+        content=[]
+        for operation in get_top_income():
+            content.append([operation.date.strftime('%d.%m.%Y'),
+                            operation.description,
+                            operation.category,
+                            f"{operation.amount:,} ₴".replace(",", " ")])
+
+        statistics_sheet.set_sheet_data(content, reset_col_positions=False)
+        statistics_sheet.set_column_widths([82, 108, 108, 70])
+        statistics_sheet.row_height(
+            row="all",
+            height="text" )
+        statistics_headers_sheet.height_and_width(height=statistics_headers_sheet.get_row_heights(0)[0] + 1)
+        statistics_sheet.refresh()
+    else:
+        statistics_headers_sheet.set_sheet_data([["Category", "Amount", "Operations"]],
+                                                reset_col_positions=False)
+        statistics_headers_sheet.set_column_widths([170,108,95])
+
+        statistics_headers_sheet.refresh()
+        statistics_sheet.set_sheet_data(get_top_income_by_category(), reset_col_positions=False)
+        statistics_sheet.set_column_widths([170,108,95])
+        statistics_sheet.row_height(
+            row="all",
+            height="text")
+        statistics_headers_sheet.height_and_width(height=statistics_headers_sheet.get_row_heights(0)[0] + 1)
+        statistics_sheet.refresh()
+
+
+def show_top_expenses():
+    if statistics_type.get() == "operation":
+        statistics_headers_sheet.set_sheet_data([["Date","Operation","Category","Amount"]],reset_col_positions=False)
+        statistics_headers_sheet.set_column_widths([82,108,108,70])
+        statistics_headers_sheet.refresh()
+
+        content=[]
+        for operation in get_top_expenses():
+            content.append([operation.date.strftime('%d.%m.%Y'),
+                            operation.description,
+                            operation.category,
+                            f"{operation.amount:,} ₴".replace(",", " ")])
+
+        statistics_sheet.set_sheet_data(content, reset_col_positions=False)
+        statistics_sheet.set_column_widths([82, 108, 108, 70])
+        statistics_sheet.row_height(
+            row="all",
+            height="text" )
+        statistics_headers_sheet.height_and_width(height=statistics_headers_sheet.get_row_heights(0)[0] + 1)
+        statistics_sheet.refresh()
+    else:
+        statistics_headers_sheet.set_sheet_data([["Category", "Amount", "Operations"]],
+                                                reset_col_positions=False)
+        statistics_headers_sheet.set_column_widths([170,108,95])
+
+        statistics_headers_sheet.refresh()
+        statistics_sheet.set_sheet_data(get_top_expenses_by_category(), reset_col_positions=False)
+        statistics_sheet.set_column_widths([170,108,95])
+        statistics_sheet.row_height(
+            row="all",
+            height="text")
+        statistics_headers_sheet.height_and_width(height=statistics_headers_sheet.get_row_heights(0)[0] + 1)
+        statistics_sheet.refresh()
 
 
 
+def show_grossbuch():
+    grossbuch_sheet.set_sheet_data(grossbuch.text_list(), reset_col_positions=False)
+    grossbuch_sheet.set_column_widths([383])
+    grossbuch_sheet.row_height(row="all", height="text")
+    grossbuch_sheet.see(grossbuch_sheet.get_total_rows() - 1, 0)
+    grossbuch_sheet.refresh()
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^STATISTICS^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -305,6 +390,7 @@ def reconcile():
 
 
 grossbuch_window = tk.CTk()
+grossbuch_window.iconbitmap("icon.ico")
 
 grossbuch_window.geometry("850x770")
 grossbuch_window.title("Grossbuch")
@@ -338,8 +424,8 @@ income_radio = tk.CTkRadioButton(left_frame,text="Income", variable=operation_ty
                                  **RADIO_STYLE)
 expense_radio = tk.CTkRadioButton(left_frame,text="Expense",variable=operation_type,value="expense",
                                   **RADIO_STYLE)
-income_radio.grid(row=1, column=0, padx=(30,15), pady=15)
-expense_radio.grid(row=1, column=1, padx=(20,15), pady=15)
+income_radio.grid(row=1, column=0, padx=(30,15), pady=(15,5))
+expense_radio.grid(row=1, column=1, padx=(20,15), pady=(15,5))
 
 
 amount_error_label = tk.CTkLabel(left_frame,text = "", text_color=ERROR_COLOR, font=SMALL_FONT)
@@ -408,6 +494,8 @@ right_frame.grid_columnconfigure(0, weight=1)
 tabs.add("Categories")
 tabs.add("Statistics")
 tabs.add("Grossbuch")
+tabs.set("Grossbuch")
+
 
 ##########################################----CATEGORIES------####################################
 
@@ -427,7 +515,7 @@ categories_tab.grid_columnconfigure(1, weight=0)
 categories_tab.grid_rowconfigure(1, weight=1)
 categories_frame=tk.CTkScrollableFrame(categories_tab, **SCROLLABLE_FRAME_STYLE)
 categories_frame.grid(row=1,column=0,columnspan=2,sticky="NSEW")
-update_categories()
+
 
 ##                                DELETE MERGE RENAME                                        ##
 
@@ -449,7 +537,7 @@ merge_with_button=tk.CTkButton(categories_tab,text="Merge into...", **BUTTON_STY
                                    command=merge_mode)
 merge_with_button.grid(row=3,column=1, pady=(5,0))
 
-##########################################-----------STATISTICS-----------------#####################
+##########################################-----------STATISTICS TAB-----------------#####################
 statistics_tab = tabs.tab("Statistics")
 
 statistics_tab.grid_rowconfigure(1, weight=1)
@@ -458,6 +546,18 @@ statistics_tab.grid_columnconfigure(0, weight=1)
 # ==========================
 # Upper panel
 # ==========================
+style = ttk.Style()
+style.theme_use("clam")
+
+style.configure(
+    "Grossbuch.DateEntry",
+    **DATE_ENTRY_STYLE
+)
+
+style.map(
+    "Grossbuch.DateEntry",
+    **DATE_ENTRY_MAP
+)
 
 top_frame = tk.CTkFrame(statistics_tab, fg_color="transparent")
 top_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
@@ -516,8 +616,9 @@ from_date_box = DateEntry(
     top_frame,
     mindate=grossbuch.first_date(),
     maxdate=date.today(),
-    date_pattern="d.m.yyyy",
-    font=("Georgia", 14)
+    date_pattern="dd.mm.yyyy",
+    style="Grossbuch.DateEntry",
+    width=20
 )
 from_date_box.set_date(grossbuch.first_date())
 from_date_box.grid(
@@ -545,8 +646,9 @@ to_date_box = DateEntry(
     top_frame,
     mindate=grossbuch.first_date(),
     maxdate=date.today(),
-    date_pattern="d.m.yyyy",
-    font=("Georgia", 14)
+    date_pattern="dd.mm.yyyy",
+    style="Grossbuch.DateEntry",
+    width=20
 )
 to_date_box.set_date(date.today())
 to_date_box.grid(
@@ -557,15 +659,23 @@ to_date_box.grid(
     sticky="e"
 )
 
+statistics_type = tk.StringVar(value="category")
+category_radio = tk.CTkRadioButton(top_frame,text="Category", variable=statistics_type,value="category",
+                                 **RADIO_STYLE)
+operation_radio = tk.CTkRadioButton(top_frame,text="Operation",variable=statistics_type,value="operation",
+                                  **RADIO_STYLE)
+category_radio.grid(row=2, column=0, padx=(30,15), pady=2)
+operation_radio.grid(row=2, column=1, columnspan = 2, padx=(20,15), pady=2)
 
-# ==========================
-# Central panel
-# ==========================
 
+###################################################################################################################
+######################################################## Central panel         #######################################
+#################################################################################################################
 center_frame = tk.CTkFrame(
     statistics_tab,
     fg_color="transparent"
 )
+
 center_frame.grid(
     row=1,
     column=0,
@@ -573,20 +683,33 @@ center_frame.grid(
     padx=5
 )
 
-center_frame.grid_rowconfigure(0, weight=1)
+
 center_frame.grid_columnconfigure(0, weight=1)
 
-statistics_box = tk.CTkTextbox(
+
+statistics_headers_sheet = tksheet.Sheet(
     center_frame,
-    font=TEXT_FONT,
-    **PANEL_STYLE
-)
-statistics_box.grid(
+    show_row_index=False,
+    show_header=False,
+    show_y_scrollbar=False,
+    show_x_scrollbar=False,
+    **TABLE_HEADER_STYLE)
+
+statistics_headers_sheet.grid(
     row=0,
     column=0,
-    sticky="nsew"
+    sticky="ew"
 )
 
+statistics_sheet = tksheet.Sheet(
+    center_frame,
+    show_row_index=False,
+    show_header=False,
+    show_y_scrollbar=True,
+    show_x_scrollbar=False,
+    **TABLE_STYLE)
+
+statistics_sheet.grid(row=1,column=0)
 
 # ==========================
 # Lower panel
@@ -626,7 +749,7 @@ top_expenses_button = tk.CTkButton(
     bottom_frame,
     text="Top Expenses",
     **SMALLER_BUTTON_STYLE,
-    command=show_top_expense
+    command=show_top_expenses
 )
 top_expenses_button.grid(
     row=0,
@@ -653,15 +776,17 @@ grossbuch_tab = tabs.tab("Grossbuch")
 grossbuch_tab.grid_rowconfigure(0, weight=1)
 grossbuch_tab.grid_columnconfigure(0, weight=1)
 
-grossbuch_box = tk.CTkTextbox(
+grossbuch_sheet = tksheet.Sheet(
     grossbuch_tab,
-    font=TEXT_FONT,
-    **PANEL_STYLE
-)
+    show_row_index=False,
+    show_header=False,
+    show_y_scrollbar=False,
+    show_x_scrollbar=False,
+    **TABLE_HEADER_STYLE)
 
-grossbuch_box.grid(row=0, column=0, sticky="nsew")
-grossbuch_box.insert("end", grossbuch.text())
+grossbuch_sheet.grid(row=0, column=0, sticky="nsew")
 
 #################################################################################
-
+update_categories()
+show_grossbuch()
 grossbuch_window.mainloop()

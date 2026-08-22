@@ -102,29 +102,42 @@ class Grossbuch:
                     categories.write(f"{category}\n")
 
     def text_list(self):
-        actual_date = 0
+        current_date=0
+        today_list=""
+        today_total = 0
+        count = 0
         result = []
-        todays = ""
-
         for operation in self.history:
-            if operation.date != actual_date:
-                if todays != "":
-                    result.append([todays])
-                todays = ""
 
-                todays += f"{operation.date.strftime('%d.%m.%Y, %A').upper()}\n\n"
-                todays += f"{operation.description}, {operation.amount:+} ₴\n"
-                todays += f"category: {operation.category}\n"
 
-                actual_date = operation.date
+            amount = f"{operation.amount:+,}".replace(",", " ")
+
+            if operation.date == current_date:
+                today_list+=(f"\n{operation.description}, {amount} ₴\n"
+                                  f"category: {operation.category}\n")
+                today_total += operation.amount
+                count += 1
 
             else:
-                todays += f"\n{operation.description}, {operation.amount:+} ₴\n"
-                todays += f"category: {operation.category}\n"
 
-        if todays != "":
-            result.append([todays])
+                if today_list:
+                    today_list+=(f"\n{count} operations, totaling{today_total:+,} ₴\n".replace(",", " "))
+                    result.append([today_list])
 
+                today_list = ""
+                count = 0
+                today_total = 0
+                current_date = operation.date
+
+                today_list+=(f"{operation.date.strftime('%d.%m.%Y, %A').upper()}\n\n"
+                                  f"{operation.description}, {amount} ₴\n"
+                                  f"category: {operation.category}\n")
+                today_total += operation.amount
+                count += 1
+
+        if today_list:
+            today_list+=(f"\n{count} operations, totaling  {today_total:+,} ₴".replace(",", " "))
+            result.append([today_list])
         return result
 
     def load_categories(self):
@@ -272,12 +285,8 @@ class Grossbuch:
 
         return self.history[-1].date
 
-    def filter_by_date(
-        self,
-        start_date=None,
-        end_date=None,
-        operations_list=None
-    ):
+    def filter_by_date(self,start_date=None,end_date=None,operations_list=None):
+
         if operations_list is None:
             operations_list = self.history
 
@@ -342,6 +351,38 @@ class Grossbuch:
     def sort_by_amount(self, operations, reverse=False):
         return sorted(operations, key=Operation.get_amount, reverse=reverse)
 
+
+    def top_income_by_category(self, start_date=None, end_date=None):
+        operations_list = self.filter_by_date(start_date,end_date,operations_list=self.history)
+        categories = {}
+
+        for operation in operations_list:
+            if operation.amount > 0:
+
+                if operation.category not in categories:
+                    categories[operation.category] = [operation.amount, 1]
+                    categories[operation.category][1] = 1
+                else:
+                    categories[operation.category][0] += operation.amount
+                    categories[operation.category][1] += 1
+
+        return sorted(categories.items(), key=lambda x: x[1], reverse=True)
+
+    def top_expenses_by_category(self, start_date=None, end_date=None):
+        operations_list = self.filter_by_date(start_date, end_date, operations_list=self.history)
+        categories = {}
+
+        for operation in operations_list:
+            if operation.amount < 0:
+
+                if operation.category not in categories:
+                    categories[operation.category] = [abs(operation.amount), 1]
+                    categories[operation.category][1] = 1
+                else:
+                    categories[operation.category][0] += abs(operation.amount)
+                    categories[operation.category][1] += 1
+
+        return sorted(categories.items(), key=lambda x: x[1], reverse=True)
 
 
 def from_dict(data):
