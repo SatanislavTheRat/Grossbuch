@@ -136,7 +136,7 @@ class Grossbuch:
                 count += 1
 
         if today_list:
-            today_list+=(f"\n{count} operations, totaling  {today_total:+,} ₴".replace(",", " "))
+            today_list+=(f"\n{count} operations, totaling  А{today_total:+,} ₴".replace(",", " "))
             result.append([today_list])
         return result
 
