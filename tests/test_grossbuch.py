@@ -1,9 +1,9 @@
-from Grossbuch import Operation,Grossbuch
+from grossbuch import Operation,Grossbuch
 from datetime import date
 import shutil
 import pytest
-from Grossbuch import CategoryInUseError
-from Grossbuch import CategoryDoesNotExistError
+from grossbuch import CategoryInUseError
+from grossbuch import CategoryDoesNotExistError
 
 test_grossbuch = Grossbuch(
     "tests/test_history.json",

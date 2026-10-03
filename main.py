@@ -5,15 +5,15 @@ from tkcalendar import DateEntry
 from tkinter import ttk
 import tksheet
 
-from Grossbuch import Grossbuch
+from grossbuch import Grossbuch
+from database import Database
 from styles import *
 
-HISTORY_FILE = "history.json"
-CATEGORIES_FILE = "categories.json"
+DATABASE_FILE = "grossbuch.db"
 BACKUP_PATH = "backups"
 
-
-grossbuch=Grossbuch(HISTORY_FILE,CATEGORIES_FILE,BACKUP_PATH)
+db = Database(DATABASE_FILE)
+grossbuch=Grossbuch(db)
 
 def lock_entry(entry):
     entry.configure(**ENTRY_DISABLED_STYLE)
@@ -57,7 +57,7 @@ def add_operation():
     description = description_entry.get().strip().capitalize()
     category = category_entry.get().strip().capitalize()
 
-    grossbuch.add_operation(operation_date, amount, description, category)
+    grossbuch.add_operation(amount, description, category, operation_date)
 
     amount_entry.delete(0, "end")
     description_entry.delete(0, "end")
@@ -187,9 +187,21 @@ def merge_mode():
     categories_frame.update_idletasks()
     categories_frame._parent_canvas.yview_moveto(0.0)
 
+def refresh_grossbuch_sheet():
+    grossbuch_sheet.set_sheet_data(
+        grossbuch.text_list(),
+        reset_col_positions=False
+    )
+    grossbuch_sheet.row_height(
+        row="all",
+        height="text"
+    )
+    grossbuch_sheet.refresh()
+
 def update_all():
     update_entries()
     update_categories()
+    refresh_grossbuch_sheet()
 
 
 def merge_into(new):

@@ -1,5 +1,31 @@
 .idea/
 .venv/
 __pycache__/
+.pytest_cache/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Databases
+grossbuch.db
+test.db
+*.db-journal
+
+# Runtime / backups
+backups/
+
+
+
+# Personal / scratch
 Комікс/
-main_reserve.py
+learning SQL/
+sandbox.py
+service/
+
+tests/__pycache__/
+tests/test_backups/
+
+
+*.zip
