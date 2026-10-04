@@ -10,7 +10,6 @@ from database import Database
 from styles import *
 
 DATABASE_FILE = "grossbuch.db"
-BACKUP_PATH = "backups"
 
 db = Database(DATABASE_FILE)
 grossbuch=Grossbuch(db)
@@ -223,27 +222,27 @@ def update_entries():
 ############################-----------STATISTICS--------------------#############################
 
 def get_summary():
-    operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)
+    operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date())
     if category_box.get() != "All categories":
         return grossbuch.calculate_summary (grossbuch.filter_by_category(category_box.get(),operations_list))
     return grossbuch.calculate_summary(operations_list)
 
 def get_top_income():
     if category_box.get() == "All categories":
-        operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)
+        operations_list = grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date())
     else:
         operations_list = grossbuch.filter_by_category(category_box.get(),
-        (grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date(), grossbuch.history)))
+        (grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date())))
 
     operations_list = [operation for operation in operations_list if operation.amount > 0]
     return grossbuch.sort_by_amount(operations_list,reverse=True)
 
 def get_top_expenses():
     if category_box.get() == "All categories":
-        operations_list = grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date(), grossbuch.history)
+        operations_list = grossbuch.filter_by_date(from_date_box.get_date(), to_date_box.get_date())
     else:
         operations_list = grossbuch.filter_by_category(category_box.get(),
-        (grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date(),grossbuch.history)))
+        (grossbuch.filter_by_date(from_date_box.get_date(),to_date_box.get_date())))
 
     operations_list = [operation for operation in operations_list if operation.amount < 0]
     return grossbuch.sort_by_amount(operations_list)
