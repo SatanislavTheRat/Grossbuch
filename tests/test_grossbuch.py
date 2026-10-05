@@ -1,120 +1,94 @@
-from grossbuch import Operation,Grossbuch
+from grossbuch import Grossbuch
 from datetime import date
 import shutil
 import pytest
-from grossbuch import CategoryInUseError
-from grossbuch import CategoryDoesNotExistError
-
-test_grossbuch = Grossbuch(
-    "tests/test_history.json",
-    "tests/test_categories.json",
-    "tests/test_backups"
-)
-
-def test_operation_to_dict():
-    operation = Operation(date(2026,8,22),
-                          -145,
-                          "Luckies",
-                          "Sigarettes",
-                          0)
-    result = operation.to_dict()
-    assert result["balance"] == 0
-
-
-def test_calculate_summary():
-    operations = test_grossbuch.filter_by_date(
-        date(2026,7,6),
-        date(2026,7,6),
-    )
-    result = test_grossbuch.calculate_summary(operations)
-
-    assert result["income"] == 4542
-    assert result["expenses"] == 2241
-    assert result["balance"] == 2301
-    assert result["records"] == 5
-
-
-def test_filter_by_date():
-    operations = test_grossbuch.filter_by_date(
-        date(2026,7,8),
-        date(2026,7,10),
-    )
-    assert operations[0].date == date(2026,7,8)
-    assert operations[-1].date == date(2026,7,10)
-    assert len(operations) == 13
-
-
-def test_top_income_by_category():
-    assert test_grossbuch.top_income_by_category(
-        date(2026,7,6),
-        date(2026,7,12))[0] == ("Family", [7102, 2])
+from database import Database
 
 
 @pytest.fixture
+def filled_grossbuch(tmp_path):
+    database_file = tmp_path / "test.db"
+    shutil.copy("tests/test_grossbuch.db", database_file)
+    db = Database(database_file)
+    grossbuch = Grossbuch(db)
+    return grossbuch
+
+@pytest.fixture
 def temp_grossbuch(tmp_path):
-    history = tmp_path / "history.json"
-    categories = tmp_path / "categories.json"
-    backups = tmp_path / "backups"
-
-    shutil.copy("tests/test_history.json", history)
-    shutil.copy("tests/test_categories.json", categories)
-
-    return Grossbuch(history, categories, backups)
+    database_file = tmp_path / "test.db"
+    db = Database(database_file)
+    return Grossbuch(db)
 
 
+def test_calculate_summary(filled_grossbuch):
+    operations = filled_grossbuch.filter_by_date(
+        date(2026,10,3),
+        date(2026,10,4),
+    )
+    result = filled_grossbuch.calculate_summary(operations)
 
-def test_add_operation(temp_grossbuch):
+    assert result["income"] == 0
+    assert result["expenses"] == 1180
+    assert result["balance"] == -1180
+    assert result["records"] == 4
 
-    length = temp_grossbuch.calculate_summary()["records"]
-    balance = temp_grossbuch.calculate_summary()["balance"]
 
-    temp_grossbuch.add_operation(
-        date(2026, 8, 23),
+def test_filter_by_date(filled_grossbuch):
+    operations = filled_grossbuch.filter_by_date(
+        date(2026,9,1),
+        date(2026,9,3),
+    )
+    assert operations[0].date == date(2026,9,1)
+    assert operations[-1].date == date(2026,9,3)
+    assert len(operations) == 7
+
+
+def test_top_income_by_category(filled_grossbuch):
+    assert filled_grossbuch.top_income_by_category(
+        date(2026,9,1),
+        date(2026,9,3))[0] == ("Salary", [38000, 1])
+
+
+def test_add_operation(filled_grossbuch):
+    length = filled_grossbuch.calculate_summary()["records"]
+    balance = filled_grossbuch.calculate_summary()["balance"]
+    result = filled_grossbuch.add_operation(
         -145,
         "Luckies",
-        "Sigarettes")
+        "Cigarettes",
+        date(2026, 10, 5))
+    assert result is True
+    assert filled_grossbuch.history[-1].description == "Luckies"
+    assert len(filled_grossbuch.history) == length+1
+    assert filled_grossbuch.calculate_summary()["records"] == length + 1
+    assert filled_grossbuch.balance == balance - 145
+    assert filled_grossbuch.calculate_summary()["balance"] == balance - 145
 
+def test_delete_category_in_use(filled_grossbuch):
+    assert filled_grossbuch.delete_category("Alcohol") is False
 
-    assert temp_grossbuch.history[-1].description == "Luckies"
-    assert len(temp_grossbuch.history) == length+1
-    assert temp_grossbuch.calculate_summary()["records"] == length + 1
-    assert temp_grossbuch.balance == balance - 145
-    assert temp_grossbuch.calculate_summary()["balance"] == balance - 145
+def test_delete_nonexisting_category(filled_grossbuch):
+    assert filled_grossbuch.delete_category("Nonexisting") is False
 
-def test_delete_category_in_use(temp_grossbuch):
+def test_rename_category(filled_grossbuch):
+    count=len(filled_grossbuch.filter_by_category("Salary"))
+    filled_grossbuch.rename_category("Salary","Income")
+    assert len(filled_grossbuch.filter_by_category("Salary")) == 0
+    assert len(filled_grossbuch.filter_by_category("Income")) == count
+    reloaded_db = Database(filled_grossbuch.db.database_file)
+    reloaded = Grossbuch(reloaded_db)
+    assert len(reloaded.filter_by_category("Salary")) == 0
+    assert len(reloaded.filter_by_category("Income")) == count
 
-    with pytest.raises(CategoryInUseError):
-        temp_grossbuch.delete_category("Alcohol")
-
-def test_delete_nonexisting_category(temp_grossbuch):
-    with pytest.raises(CategoryDoesNotExistError):
-        temp_grossbuch.delete_category("Nonexisting")
-
-def test_rename_category(temp_grossbuch):
-    count=len(temp_grossbuch.filter_by_category("Alcohol"))
-    temp_grossbuch.rename_category("Alcohol","Booze")
-    assert len(temp_grossbuch.filter_by_category("Alcohol")) == 0
-    assert len(temp_grossbuch.filter_by_category("Booze")) == count
-    reloaded = Grossbuch(
-        temp_grossbuch.history_file,
-        temp_grossbuch.categories_file,
-        temp_grossbuch.backup_path
-    )
-    assert len(reloaded.filter_by_category("Alcohol")) == 0
-    assert len(reloaded.filter_by_category("Booze")) == count
-
-def test_merge_categories(temp_grossbuch):
-    count=len(temp_grossbuch.filter_by_category("Alcohol"))+len(temp_grossbuch.filter_by_category("Drugs"))
-    temp_grossbuch.merge_categories("Alcohol","Drugs")
-    assert len(temp_grossbuch.filter_by_category("Alcohol")) == 0
-    assert len(temp_grossbuch.filter_by_category("Drugs")) == count
-    reloaded = Grossbuch(
-        temp_grossbuch.history_file,
-        temp_grossbuch.categories_file,
-        temp_grossbuch.backup_path
-    )
-    assert len(reloaded.filter_by_category("Alcohol")) == 0
-    assert len(reloaded.filter_by_category("Drugs")) == count
+def test_merge_categories(filled_grossbuch):
+    count=len(filled_grossbuch.filter_by_category("Restaurants"))+len(filled_grossbuch.filter_by_category("Food"))
+    filled_grossbuch.merge_categories("Restaurants","Food")
+    assert len(filled_grossbuch.filter_by_category("Restaurants")) == 0
+    assert len(filled_grossbuch.filter_by_category("Food")) == count
+    reloaded_db = Database(filled_grossbuch.db.database_file)
+    reloaded = Grossbuch(reloaded_db)
+    assert len(reloaded.filter_by_category("Restaurants")) == 0
+    assert len(reloaded.filter_by_category("Food")) == count
 
 def test_delete_unused_categories(temp_grossbuch):
     temp_grossbuch.add_category("unused")
@@ -125,8 +99,4 @@ def test_add_category_once(temp_grossbuch):
     temp_grossbuch.add_category("new")
     assert "new" in temp_grossbuch.categories
     temp_grossbuch.add_category("new")
-    count = 0
-    for category in temp_grossbuch.categories:
-        if category == "new":
-            count += 1
-    assert count == 1
+    assert temp_grossbuch.categories.count("new") == 1
