@@ -14,7 +14,7 @@ test.db
 # Runtime / backups
 backups/
 
-
+sandbox.py
 
 tests/__pycache__/
 tests/test_backups/
