@@ -7,9 +7,7 @@ __pycache__/
 build/
 dist/
 *.spec
-
 # Databases
-grossbuch.db
 test.db
 *.db-journal
 
@@ -17,12 +15,6 @@ test.db
 backups/
 
 
-
-# Personal / scratch
-Комікс/
-learning SQL/
-sandbox.py
-service/
 
 tests/__pycache__/
 tests/test_backups/

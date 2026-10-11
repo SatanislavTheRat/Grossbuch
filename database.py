@@ -1,4 +1,6 @@
 import sqlite3
+from pathlib import Path
+from datetime import datetime
 
 class Database:
     def __init__(self, database_file):
@@ -32,6 +34,26 @@ class Database:
             """
         )
         self.connection.commit()
+
+    def create_backup(self, backup_dir="backups", keep_last=10):
+        backup_path = Path(backup_dir)
+        backup_path.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        backup_file = backup_path / f"grossbuch_{timestamp}.db"
+        backup_connection = sqlite3.connect(backup_file)
+        try:
+            self.connection.backup(backup_connection)
+        finally:
+            backup_connection.close()
+        backups = sorted(
+            backup_path.glob("grossbuch_*.db"),
+            key=lambda file: file.stat().st_mtime,
+            reverse=True
+        )
+
+        for old_backup in backups[keep_last:]:
+            old_backup.unlink()
+        return backup_file
 
     def get_category_id(self, name):
         name=name.strip().casefold()

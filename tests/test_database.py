@@ -1,4 +1,5 @@
 from tkinter.constants import INSERT
+from datetime import datetime
 
 import pytest
 from database import Database
@@ -12,6 +13,28 @@ def temp_db(tmp_path):
     yield db
     db.connection.close()
 
+
+def test_create_backup(temp_db, tmp_path):
+    temp_db.add_category("Backup Test")
+    backup_dir = tmp_path / "backups"
+    backup_file = temp_db.create_backup(backup_dir)
+    assert backup_file.exists()
+    backup_db = Database(backup_file)
+    try:
+        assert "Backup Test" in backup_db.get_categories()
+    finally:
+        backup_db.connection.close()
+
+
+def test_backup_keep_last(temp_db, tmp_path):
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    for i in range(5):
+        backup_file = backup_dir / f"grossbuch_old_{i}.db"
+        backup_file.touch()
+    temp_db.create_backup(backup_dir, keep_last=3)
+    backups = list(backup_dir.glob("grossbuch_*.db"))
+    assert len(backups) == 3
 
 
 def test_add_category(temp_db):

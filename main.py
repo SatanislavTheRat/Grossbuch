@@ -12,6 +12,7 @@ from styles import *
 DATABASE_FILE = "grossbuch.db"
 
 db = Database(DATABASE_FILE)
+db.create_backup()
 grossbuch=Grossbuch(db)
 
 def lock_entry(entry):
