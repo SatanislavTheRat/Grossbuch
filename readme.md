@@ -12,6 +12,17 @@ It is also the project I started learning Python with. As my skills grew, the ap
 
 The project includes transaction tracking, category management, filtering, financial statistics, and persistent local data storage.
 
+## Screenshots
+
+### Operations
+![Transaction list](screenshots/operations.png)
+
+### Statistics
+![Financial statistics](screenshots/statistics.png)
+
+### Categories
+![Category management](screenshots/categories.png)
+
 ## Download and Run (Windows)
 
 Python installation is not required.
