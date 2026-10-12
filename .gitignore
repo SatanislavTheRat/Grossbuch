@@ -15,6 +15,7 @@ test.db
 backups/
 
 sandbox.py
+tests/sandbox.py
 
 tests/__pycache__/
 tests/test_backups/
